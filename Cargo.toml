@@ -1,0 +1,38 @@
+[package]
+name = "substrate-harvester"
+version = "0.1.0"
+authors = ["Denis Tsai <denistsai@aetheras.io>"]
+license = "GPL-3.0"
+edition = "2018"
+
+[dependencies]
+async-trait = "0.1.36"
+codec = { package = "parity-scale-codec", version = "1.3.1" }
+tokio = { version = "0.2.9", features = [ "signal", "rt-core", "rt-threaded" ] }
+hex = { version = "0.4", default-features = false }
+serde = { version = "1.0.106", features = ["derive"] }
+log = "0.4.8"
+futures = "0.3.4"
+futures-timer = "3.0.2"
+thiserror = "1.0"
+
+frame-system = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+frame-support = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+frame-metadata = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+
+sp-core = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+sp-rpc = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+sp-api = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+sp-storage= { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+sp-version = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+sc-client-api = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+
+[dev-dependencies]
+pallet-balances = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+sp-io = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
+sp-core = { git = "https://github.com/paritytech/substrate", rev = "c32a3baa20537dd1ec95e46f94533ee04925ca2e" }
