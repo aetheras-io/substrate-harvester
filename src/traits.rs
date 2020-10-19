@@ -5,7 +5,7 @@ use std::pin::Pin;
 use async_trait::async_trait;
 use futures::Stream;
 
-use codec::{Codec, Compact, Decode, Encode, Input, Output};
+use codec::Codec;
 
 use sc_client_api::{BlockImportNotification, FinalityNotification};
 use sp_core::storage::StorageKey;
@@ -16,7 +16,7 @@ use sp_runtime::{
 use sp_storage::StorageData;
 use sp_version::RuntimeVersion;
 
-use frame_system::{Phase, Trait as System};
+use frame_system::Phase;
 
 #[async_trait]
 pub trait BlockProcessor<Block: BlockT, Client> {

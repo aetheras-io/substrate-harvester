@@ -1,12 +1,12 @@
 use crate::metadata::Metadata;
+use crate::storage_key_at;
 use crate::traits::{BlockProcessor, Decoder, EventExtractor, IndexStore, MinimalClient};
-use crate::{blake2_128_concat, storage_key_at, storage_key_with_hashed};
 
 use async_trait::async_trait;
 use futures::stream::{self, StreamExt};
-use std::{fmt, marker::PhantomData};
+use std::marker::PhantomData;
 
-use codec::{Decode, Encode};
+// use codec::{Decode, Encode};
 use sp_arithmetic::traits::{AtLeast32Bit, One};
 use sp_core::storage::StorageKey;
 use sp_runtime::{
@@ -14,7 +14,7 @@ use sp_runtime::{
     traits::{Block as BlockT, Header as HeaderT, NumberFor},
 };
 
-use frame_support::traits::Currency;
+// use frame_support::traits::Currency;
 
 // use frame_system::{Phase, Trait as System};
 // use pallet_balances::Trait as Balances;

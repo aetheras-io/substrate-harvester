@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures::{
-    future::{self, Either, Future},
+    future::{self, Either},
     pin_mut, StreamExt,
 };
 use futures_timer::Delay;
@@ -403,7 +403,11 @@ where
             .handle_pending(&metadata, &*client, next_block)
             .await
         {
-            log::error!("❗️Failed to process.  Stopped at: {:?}", next_block);
+            log::error!(
+                "❗️Failed to process.  Stopped at: {:?}, Error: {:?}",
+                next_block,
+                e
+            );
             return Ok(next_block - One::one());
         }
 
