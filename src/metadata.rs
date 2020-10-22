@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::str::FromStr;
 
@@ -23,26 +24,26 @@ pub enum Error {
 
 #[derive(Clone, Default, Debug)]
 pub struct Metadata {
-    modules: Vec<Module>,
-    modules_with_events: Vec<ModuleWithEvents>,
+    modules: HashMap<u8, Module>,
+    modules_with_events: HashMap<u8, ModuleWithEvents>,
 }
 
 impl Metadata {
     pub fn module(&self, idx: u8) -> Result<&Module, Error> {
-        if (idx as usize) < self.modules.len() {
-            Ok(&self.modules[idx as usize])
+        if let Some(m) = self.modules.get(&idx) {
+            Ok(m)
         } else {
             Err(Error::ModuleNotFound(idx))
         }
     }
 
-    pub fn modules_with_events(&self) -> &Vec<ModuleWithEvents> {
+    pub fn modules_with_events(&self) -> &HashMap<u8, ModuleWithEvents> {
         &self.modules_with_events
     }
 
     pub fn module_with_events(&self, idx: u8) -> Result<&ModuleWithEvents, Error> {
-        if (idx as usize) < self.modules_with_events.len() {
-            Ok(&self.modules_with_events[idx as usize])
+        if let Some(m) = self.modules_with_events.get(&idx) {
+            Ok(m)
         } else {
             Err(Error::ModuleNotFound(idx))
         }
@@ -62,15 +63,15 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
             _ => return Err(Error::InvalidVersion),
         };
 
-        let mut modules = Vec::new();
-        let mut modules_with_events = Vec::new();
+        let mut modules = HashMap::new();
+        let mut modules_with_events = HashMap::new();
         for encoded in extract(meta.modules)?.into_iter() {
             let module_name = extract(encoded.name.clone())?;
             let module = Module {
                 name: module_name.clone(),
                 ..Default::default()
             };
-            modules.push(module);
+            modules.insert(encoded.index, module);
 
             // //we aren't handling storage just yet
             // if let Some(storage) = encoded.storage {
@@ -79,14 +80,14 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
             // }
 
             if let Some(events) = encoded.event {
-                let mut module_with_events = ModuleWithEvents {
+                let mut mod_events = ModuleWithEvents {
                     name: module_name,
                     ..Default::default()
                 };
                 for event in extract(events)?.into_iter() {
-                    module_with_events.events.push(extract_event(event)?)
+                    mod_events.events.push(extract_event(event)?)
                 }
-                modules_with_events.push(module_with_events);
+                modules_with_events.insert(encoded.index, mod_events);
             }
         }
         Ok(Metadata {
