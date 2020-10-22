@@ -168,6 +168,7 @@ pub enum EventArg {
     Primitive(String),
     Vec(Box<EventArg>),
     Tuple(Vec<EventArg>),
+    Option(Box<EventArg>),
 }
 
 impl FromStr for EventArg {
@@ -179,6 +180,15 @@ impl FromStr for EventArg {
                 Ok(EventArg::Vec(Box::new(s[4..s.len() - 1].parse()?)))
             } else {
                 Err(Error::InvalidEventArgument(s.to_string()))
+            }
+        } else if s.starts_with("Option<") {
+            if s.ends_with('>') {
+                Ok(EventArg::Option(Box::new(s[7..s.len() - 1].parse()?)))
+            } else {
+                Err(Error::InvalidEventArgument(format!(
+                    "Expected closing `>` for `Option` got: {}",
+                    s.to_string()
+                )))
             }
         } else if s.starts_with('(') {
             if s.ends_with(')') {
@@ -203,6 +213,7 @@ impl EventArg {
         match self {
             EventArg::Primitive(p) => vec![p.clone()],
             EventArg::Vec(arg) => arg.primitives(),
+            EventArg::Option(arg) => arg.primitives(),
             EventArg::Tuple(args) => {
                 let mut primitives = Vec::new();
                 for arg in args {
