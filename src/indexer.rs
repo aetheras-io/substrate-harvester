@@ -25,6 +25,8 @@ pub enum Error {
     Sqlite(String),
     #[error("Client error {0:?}")]
     Client(String),
+    #[error("Decoder error {0:?}")]
+    Decoder(String),    
     #[error("Other: {0:?}")]
     Other(String),
 }
@@ -97,7 +99,7 @@ where
             let records = stream::iter(
                 self.decoder
                     .decode_events(metadata, &mut entry.0.as_slice())
-                    .unwrap_or_default(),
+                    .map_err(|e| Error::Decoder(e.to_string()))?,
             )
             .then(|(phase, runtime_event)| async move {
                 let data = Extractor::extract(client, block, &phase, &runtime_event)
@@ -136,7 +138,7 @@ where
             let records = stream::iter(
                 self.decoder
                     .decode_events(metadata, &mut entry.0.as_slice())
-                    .unwrap_or_default(),
+                    .map_err(|e| Error::Decoder(e.to_string()))?,
             )
             .then(|(phase, runtime_event)| async move {
                 let data = Extractor::extract(client, block, &phase, &runtime_event)
