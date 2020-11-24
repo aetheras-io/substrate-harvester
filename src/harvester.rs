@@ -73,16 +73,56 @@ where
 {
     let client = Arc::new(client);
 
-    let last_finalized: NumberFor<Block> = block_processor
+    let mut last_finalized: NumberFor<Block> = block_processor
         .last_finalized_block()
         .map_err(|e| Error::BlockProcessor(e.to_string()))?;
 
-    let finalized_block = client
+    let mut finalized_block = client
         .finalized_head()
         .await
         .map_err(|e| Error::Client(e.to_string()))?;
     let (metadata, runtime) = chain_info_at(client.clone(), finalized_block).await?;
     let block_processor = Arc::new(block_processor);
+
+    // Catch up on finalized block if it's too far behind
+    loop {
+        if finalized_block - last_finalized < 10.into() {
+            break;
+        }
+
+        log::info!(
+            "🎥 Catching up required.  Last Finalized Block: {:?}, Tip Finalized: {:?}",
+            last_finalized,
+            finalized_block
+        );
+
+        // do catch up
+        let result = block_processor
+            .try_finalize(&*client, finalized_block)
+            .await
+            .map_err(|e| Error::Client(e.to_string()))?;
+
+        if let Some(start) = result {
+            repair_range(
+                client.clone(),
+                &metadata,
+                &runtime,
+                block_processor.clone(),
+                start,
+                finalized_block,
+            )
+            .await?;
+        }
+
+        last_finalized = block_processor
+            .last_finalized_block()
+            .map_err(|e| Error::BlockProcessor(e.to_string()))?;
+
+        finalized_block = client
+            .finalized_head()
+            .await
+            .map_err(|e| Error::Client(e.to_string()))?;
+    }
 
     let mut finality_notification_stream = client
         .finality_notification_stream()

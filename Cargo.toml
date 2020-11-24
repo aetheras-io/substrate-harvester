@@ -36,3 +36,4 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", rev = "a200
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", rev = "a200cdb93c6af5763b9c7bf313fa708764ac88ca" }
 sp-io = { git = "https://github.com/paritytech/substrate", rev = "a200cdb93c6af5763b9c7bf313fa708764ac88ca" }
 sp-core = { git = "https://github.com/paritytech/substrate", rev = "a200cdb93c6af5763b9c7bf313fa708764ac88ca" }
+tracing = "0.1.21"
