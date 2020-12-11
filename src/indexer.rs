@@ -21,12 +21,12 @@ use sp_runtime::{
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Sqlite error: {0:?}")]
-    Sqlite(String),
+    #[error("Database error: {0:?}")]
+    Database(String),
     #[error("Client error {0:?}")]
     Client(String),
     #[error("Decoder error {0:?}")]
-    Decoder(String),    
+    Decoder(String),
     #[error("Other: {0:?}")]
     Other(String),
 }
@@ -89,13 +89,11 @@ where
             .hash(block)
             .await
             .map_err(|e| Error::Client(e.to_string()))?
-            .expect("Failed to retrieve hash")
+            .ok_or(Error::Client("Empty hash".to_string()))?
             .as_ref()
             .to_vec();
 
         if let Some(entry) = block_data {
-            // TODO: Handle Parse event errors
-
             let records = stream::iter(
                 self.decoder
                     .decode_events(metadata, &mut entry.0.as_slice())
@@ -104,16 +102,18 @@ where
             .then(|(phase, runtime_event)| async move {
                 let data = Extractor::extract(client, block, &phase, &runtime_event)
                     .await
-                    .unwrap();
+                    .map_err(|e| Error::Decoder(e.to_string()))?;
 
-                (phase, runtime_event, data)
+                Ok((phase, runtime_event, data))
             })
-            .collect()
-            .await;
+            .collect::<Vec<Result<(frame_system::Phase, RuntimeEvent, E), Error>>>()
+            .await
+            .into_iter()
+            .collect::<Result<Vec<(frame_system::Phase, RuntimeEvent, E)>, Error>>()?;
 
             self.store
                 .process_pending(block.into(), hash, records)
-                .map_err(|e| Error::Sqlite(e.to_string()))?;
+                .map_err(|e| Error::Database(e.to_string()))?;
         } else {
             log::warn!("❗️ Block {:?} has no events.  This is unusual.", block);
         }
@@ -134,7 +134,6 @@ where
             .map_err(|e| Error::Client(e.to_string()))?;
 
         if let Some(entry) = block_data {
-            // TODO: Handle Parse event errors
             let records = stream::iter(
                 self.decoder
                     .decode_events(metadata, &mut entry.0.as_slice())
@@ -143,16 +142,18 @@ where
             .then(|(phase, runtime_event)| async move {
                 let data = Extractor::extract(client, block, &phase, &runtime_event)
                     .await
-                    .unwrap();
+                    .map_err(|e| Error::Decoder(e.to_string()))?;
 
-                (phase, runtime_event, data)
+                Ok((phase, runtime_event, data))
             })
-            .collect()
-            .await;
+            .collect::<Vec<Result<(frame_system::Phase, RuntimeEvent, E), Error>>>()
+            .await
+            .into_iter()
+            .collect::<Result<Vec<(frame_system::Phase, RuntimeEvent, E)>, Error>>()?;
 
             self.store
                 .process_finalized(block.into(), records)
-                .map_err(|e| Error::Sqlite(e.to_string()))?;
+                .map_err(|e| Error::Database(e.to_string()))?;
         } else {
             log::warn!("❗️ Block {:?} has no events.  This is unusual.", block);
         }
@@ -168,7 +169,7 @@ where
         let pending_blocks = self
             .store
             .non_finalized_blocks()
-            .map_err(|e| Error::Sqlite(e.to_string()))?;
+            .map_err(|e| Error::Database(e.to_string()))?;
         let mut idx = 0;
         let mut current_block = self.last_finalized_block()? + One::one();
         let end_block = block;
@@ -186,7 +187,7 @@ where
                 .hash(current_block)
                 .await
                 .map_err(|e| Error::Client(e.to_string()))?
-                .expect("Failed to retrieve block hash from client");
+                .ok_or(Error::Client("Empty hash".to_string()))?;
 
             // We've exhausted pending blocks
             if idx >= pending_blocks.len() {
@@ -202,26 +203,28 @@ where
                 let prev_block_num = current_block - One::one();
                 self.store
                     .purge_pending(prev_block_num.into())
-                    .map_err(|e| Error::Sqlite(e.to_string()))?;
+                    .map_err(|e| Error::Database(e.to_string()))?;
                 log::info!("📗❓ No matching pending block for: {:?}", current_block);
                 return Ok(Some(current_block));
             }
 
-            let cached_hash = pending_block.1.unwrap();
+            let cached_hash = pending_block
+                .1
+                .expect("Pending block in store is missing a hash");
 
             if &cached_hash[..] != finalized_hash.as_ref() {
                 // Set pending counter to current and clear
                 let prev_block_num = current_block - One::one();
                 self.store
                     .purge_pending(prev_block_num.into())
-                    .map_err(|e| Error::Sqlite(e.to_string()))?;
+                    .map_err(|e| Error::Database(e.to_string()))?;
                 log::warn!("📗❗️ Matching block number with pending block, but different hash!");
                 return Ok(Some(current_block));
             }
 
             self.store
                 .finalize(current_block.into())
-                .map_err(|e| Error::Sqlite(e.to_string()))?;
+                .map_err(|e| Error::Database(e.to_string()))?;
 
             idx += 1;
             current_block += One::one();
@@ -234,7 +237,7 @@ where
         let block: NumberFor<Block> = self
             .store
             .last_finalized_block()
-            .map_err(|e| Error::Sqlite(e.to_string()))?
+            .map_err(|e| Error::Database(e.to_string()))?
             .into();
         Ok(block)
     }
@@ -243,7 +246,7 @@ where
         let block: NumberFor<Block> = self
             .store
             .last_pending_block()
-            .map_err(|e| Error::Sqlite(e.to_string()))?
+            .map_err(|e| Error::Database(e.to_string()))?
             .into();
         Ok(block)
     }
@@ -251,6 +254,6 @@ where
     fn purge_pending(&self, block: NumberFor<Block>) -> Result<(), Self::Error> {
         self.store
             .purge_pending(block.into())
-            .map_err(|e| Error::Sqlite(e.to_string()))
+            .map_err(|e| Error::Database(e.to_string()))
     }
 }
