@@ -223,7 +223,9 @@ where
             // 📘 Pending Block
             Either::Right(Some(block)) => {
                 let current_block = *block.header.number();
-                let last_processed = block_processor.last_pending_block()?;
+                let last_processed = block_processor
+                    .last_pending_block()
+                    .map_err(|e| Error::BlockProcessor(e.to_string()))?;
 
                 log::info!("📘 Received Pending Block: {:?}", current_block);
 
