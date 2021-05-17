@@ -86,7 +86,7 @@ where
 
     // Catch up on finalized block if it's too far behind
     loop {
-        if finalized_block - last_finalized < 10.into() {
+        if finalized_block - last_finalized < 10u32.into() {
             break;
         }
 

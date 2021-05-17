@@ -100,10 +100,11 @@ where
         let block = block_id.unwrap_or_else(|| BlockId::Hash(self.inner.info().finalized_hash));
         let metadata = self.inner.runtime_api().metadata(&block)?;
         //#HACK simplest form of error handling for now
+        //##HACK piggybacking on Error::Backend because Msg was removed
         RuntimeMetadataPrefixed::decode(&mut metadata.as_slice())
-            .map_err(|e| BlockchainError::Msg(e.to_string()))?
+            .map_err(|e| BlockchainError::Backend(e.to_string()))?
             .try_into()
-            .map_err(|e: MetadataError| BlockchainError::Msg(e.to_string()))
+            .map_err(|e: MetadataError| BlockchainError::Backend(e.to_string()))
     }
 
     async fn storage(
