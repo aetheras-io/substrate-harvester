@@ -5,8 +5,6 @@ use std::pin::Pin;
 use async_trait::async_trait;
 use futures::Stream;
 
-use codec::Codec;
-
 use sc_client_api::{BlockImportNotification, FinalityNotification};
 use sp_core::storage::StorageKey;
 use sp_runtime::{
@@ -84,10 +82,6 @@ pub trait MinimalClient<Block: BlockT> {
 
 pub trait Decoder<T> {
     type Error: std::error::Error + Send + 'static;
-
-    fn register_type_size<U>(&mut self, name: &str) -> Result<usize, Self::Error>
-    where
-        U: Default + Codec + Send + 'static;
 
     fn decode_events(
         &self,

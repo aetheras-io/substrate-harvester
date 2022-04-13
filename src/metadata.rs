@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::str::FromStr;
 
-use frame_metadata::{DecodeDifferent, RuntimeMetadata, RuntimeMetadataPrefixed};
+use frame_metadata::{RuntimeMetadata, RuntimeMetadataLastVersion, RuntimeMetadataPrefixed};
+
+use scale_info::{form::PortableForm, Variant};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -20,10 +22,15 @@ pub enum Error {
     InvalidPrefix,
     #[error("Invalid metadata version")]
     InvalidVersion,
+    #[error("Type {0} missing from type registry")]
+    MissingType(u32),
+    #[error("Type {0} was not a variant/enum type")]
+    TypeDefNotVariant(u32),
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct Metadata {
+    metadata: RuntimeMetadataLastVersion,
     modules: HashMap<u8, Module>,
     modules_with_events: HashMap<u8, ModuleWithEvents>,
 }
@@ -48,6 +55,11 @@ impl Metadata {
             Err(Error::ModuleNotFound(idx))
         }
     }
+
+    /// Return the runtime metadata.
+    pub fn runtime_metadata(&self) -> &RuntimeMetadataLastVersion {
+        &self.metadata
+    }
 }
 
 impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
@@ -59,38 +71,59 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
         }
 
         let meta = match metadata.1 {
-            RuntimeMetadata::V12(meta) => meta,
+            RuntimeMetadata::V14(meta) => meta,
             _ => return Err(Error::InvalidVersion),
         };
 
+        let metadata = meta.clone();
+
         let mut modules = HashMap::new();
         let mut modules_with_events = HashMap::new();
-        for encoded in extract(meta.modules)?.into_iter() {
-            let module_name = extract(encoded.name.clone())?;
+
+        let get_type_def_variant = |type_id: u32| {
+            let ty = meta
+                .types
+                .resolve(type_id)
+                .ok_or(Error::MissingType(type_id))?;
+
+            if let scale_info::TypeDef::Variant(var) = ty.type_def() {
+                Ok(var)
+            } else {
+                Err(Error::TypeDefNotVariant(type_id))
+            }
+        };
+
+        for pallet in meta.pallets {
             let module = Module {
-                name: module_name.clone(),
+                name: pallet.name.to_string(),
                 ..Default::default()
             };
-            modules.insert(encoded.index, module);
 
-            // //we aren't handling storage just yet
-            // if let Some(storage) = encoded.storage {
-            //     let storage = extract(storage)?;
-            //     let module_prefix = extract(storage.prefix)?;
-            // }
+            modules.insert(pallet.index, module);
 
-            if let Some(events) = encoded.event {
+            if let Some(events) = pallet.event {
                 let mut mod_events = ModuleWithEvents {
-                    name: module_name,
+                    name: pallet.name.to_string(),
                     ..Default::default()
                 };
-                for event in extract(events)?.into_iter() {
-                    mod_events.events.push(extract_event(event)?)
+
+                let type_def_variant = get_type_def_variant(events.ty.id())?;
+
+                for var in type_def_variant.variants() {
+                    let event_metadata = ModuleEventMetadata {
+                        name: var.name().clone(),
+                        variant: var.clone(),
+                    };
+
+                    mod_events.events.push(event_metadata);
                 }
-                modules_with_events.insert(encoded.index, mod_events);
+
+                modules_with_events.insert(pallet.index, mod_events);
             }
         }
+
         Ok(Metadata {
+            metadata,
             modules,
             modules_with_events,
         })
@@ -143,10 +176,10 @@ impl ModuleWithEvents {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct ModuleEventMetadata {
     name: String,
-    arguments: Vec<EventArg>,
+    variant: Variant<PortableForm>,
 }
 
 impl ModuleEventMetadata {
@@ -154,8 +187,9 @@ impl ModuleEventMetadata {
         &self.name
     }
 
-    pub fn arguments(&self) -> Vec<EventArg> {
-        self.arguments.to_vec()
+    /// Get the type def variant for the pallet event.
+    pub fn variant(&self) -> &Variant<PortableForm> {
+        &self.variant
     }
 }
 
@@ -224,21 +258,4 @@ impl EventArg {
             }
         }
     }
-}
-
-fn extract<B: 'static, O: 'static>(dd: DecodeDifferent<B, O>) -> Result<O, Error> {
-    match dd {
-        DecodeDifferent::Decoded(value) => Ok(value),
-        _ => Err(Error::Extraction(0)),
-    }
-}
-
-fn extract_event(event: frame_metadata::EventMetadata) -> Result<ModuleEventMetadata, Error> {
-    let name = extract(event.name)?;
-    let mut arguments = Vec::new();
-    for arg in extract(event.arguments)? {
-        let arg = arg.parse::<EventArg>()?;
-        arguments.push(arg);
-    }
-    Ok(ModuleEventMetadata { name, arguments })
 }

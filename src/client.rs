@@ -18,7 +18,8 @@ use sc_client_api::{
     backend::Backend as BackendT, client::BlockchainEvents, BlockImportNotification,
     FinalityNotification, StorageProvider,
 };
-use sp_api::{ApiErrorExt, CallApiAt, Metadata as MetadataT, ProvideRuntimeApi};
+use sp_api::{CallApiAt, Metadata as MetadataT, ProvideRuntimeApi};
+
 use sp_arithmetic::traits::AtLeast32Bit;
 use sp_blockchain::{Error as BlockchainError, HeaderBackend, HeaderMetadata};
 use sp_core::storage::StorageKey;
@@ -50,7 +51,7 @@ impl<Block: BlockT, Client, Backend> MinimalClient<Block> for InProcess<Block, C
 where
     Client: ProvideRuntimeApi<Block>
         + BlockchainEvents<Block>
-        + CallApiAt<Block, Error = BlockchainError>
+        + CallApiAt<Block>
         + HeaderBackend<Block>
         + HeaderMetadata<Block, Error = BlockchainError>
         + StorageProvider<Block, Backend>
@@ -59,7 +60,6 @@ where
         + 'static,
     Client::Api: MetadataT<Block>,
     Backend: BackendT<Block> + 'static,
-    <Client as ProvideRuntimeApi<Block>>::Api: ApiErrorExt<Error = BlockchainError>,
     <Block::Header as HeaderT>::Number: AtLeast32Bit,
     <<Block::Header as HeaderT>::Number as TryInto<u32>>::Error: fmt::Debug,
 {
@@ -93,12 +93,13 @@ where
         block_id: Option<BlockId<Block>>,
     ) -> Result<RuntimeVersion, Self::Error> {
         let block = block_id.unwrap_or_else(|| BlockId::Hash(self.inner.info().finalized_hash));
-        self.inner.runtime_version_at(&block)
+        self.inner.runtime_version_at(&block).map_err(|e| e.into())
     }
 
     async fn metadata_at(&self, block_id: Option<BlockId<Block>>) -> Result<Metadata, Self::Error> {
         let block = block_id.unwrap_or_else(|| BlockId::Hash(self.inner.info().finalized_hash));
         let metadata = self.inner.runtime_api().metadata(&block)?;
+
         //#HACK simplest form of error handling for now
         //##HACK piggybacking on Error::Backend because Msg was removed
         RuntimeMetadataPrefixed::decode(&mut metadata.as_slice())
