@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1"
-codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 tokio = { version = "0.2", features = [ "signal", "rt-core", "rt-threaded" ] }
 hex = { version = "0.4", default-features = false }
 serde = { version = "1.0.136", features = ["derive"] }
@@ -18,10 +18,10 @@ thiserror = "1"
 
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
-frame-metadata = { version = "14.2.0", default-features = false, features = ["v14"] }
+frame-metadata = "15.0.0"
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
 
-scale-info = { version = "1.0.0", features = ["bit-vec"] }
+scale-info = { version = "2.0.1", features = ["bit-vec"] }
 
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
