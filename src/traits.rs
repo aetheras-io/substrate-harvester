@@ -5,7 +5,6 @@ use std::pin::Pin;
 use async_trait::async_trait;
 use futures::Stream;
 
-use sc_client_api::{BlockImportNotification, FinalityNotification};
 use sp_core::storage::StorageKey;
 use sp_runtime::{
     generic::BlockId,
@@ -15,6 +14,14 @@ use sp_storage::StorageData;
 use sp_version::RuntimeVersion;
 
 use frame_system::Phase;
+
+pub struct BlockImportEvent<Block: BlockT> {
+    pub header: Block::Header,
+}
+
+pub struct FinalityImportEvent<Block: BlockT> {
+    pub header: Block::Header,
+}
 
 #[async_trait]
 pub trait BlockProcessor<Block: BlockT, Client> {
@@ -55,11 +62,11 @@ pub trait MinimalClient<Block: BlockT> {
 
     async fn import_notification_stream(
         &self,
-    ) -> Pin<Box<dyn Stream<Item = BlockImportNotification<Block>> + Send>>;
+    ) -> Pin<Box<dyn Stream<Item = BlockImportEvent<Block>> + Send>>;
 
     async fn finality_notification_stream(
         &self,
-    ) -> Pin<Box<dyn Stream<Item = FinalityNotification<Block>> + Send>>;
+    ) -> Pin<Box<dyn Stream<Item = FinalityImportEvent<Block>> + Send>>;
 
     async fn hash(
         &self,

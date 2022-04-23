@@ -1,7 +1,7 @@
 /// Wrappers clients for use with the offchain workers
 use crate::{
     metadata::{Error as MetadataError, Metadata},
-    traits::MinimalClient,
+    traits::{BlockImportEvent, FinalityImportEvent, MinimalClient},
 };
 
 use std::convert::TryInto;
@@ -14,10 +14,7 @@ use async_trait::async_trait;
 use codec::Decode;
 use futures::{Stream, StreamExt};
 
-use sc_client_api::{
-    backend::Backend as BackendT, client::BlockchainEvents, BlockImportNotification,
-    FinalityNotification, StorageProvider,
-};
+use sc_client_api::{backend::Backend as BackendT, client::BlockchainEvents, StorageProvider};
 use sp_api::{CallApiAt, Metadata as MetadataT, ProvideRuntimeApi};
 
 use sp_arithmetic::traits::AtLeast32Bit;
@@ -71,14 +68,20 @@ where
 
     async fn import_notification_stream(
         &self,
-    ) -> Pin<Box<dyn Stream<Item = BlockImportNotification<Block>> + Send>> {
-        self.inner.import_notification_stream().boxed()
+    ) -> Pin<Box<dyn Stream<Item = BlockImportEvent<Block>> + Send>> {
+        self.inner
+            .import_notification_stream()
+            .map(|b| BlockImportEvent { header: b.header })
+            .boxed()
     }
 
     async fn finality_notification_stream(
         &self,
-    ) -> Pin<Box<dyn Stream<Item = FinalityNotification<Block>> + Send>> {
-        self.inner.finality_notification_stream().boxed()
+    ) -> Pin<Box<dyn Stream<Item = FinalityImportEvent<Block>> + Send>> {
+        self.inner
+            .finality_notification_stream()
+            .map(|b| FinalityImportEvent { header: b.header })
+            .boxed()
     }
 
     async fn hash(
