@@ -133,6 +133,14 @@ where
             .await
             .map_err(|e| Error::Client(e.to_string()))?;
 
+        let hash = client
+            .hash(block)
+            .await
+            .map_err(|e| Error::Client(e.to_string()))?
+            .ok_or(Error::Client("Empty hash".to_string()))?
+            .as_ref()
+            .to_vec();
+
         if let Some(entry) = block_data {
             let records = stream::iter(
                 self.decoder
@@ -152,7 +160,7 @@ where
             .collect::<Result<Vec<(frame_system::Phase, RuntimeEvent, E)>, Error>>()?;
 
             self.store
-                .process_finalized(block.into(), records)
+                .process_finalized(block.into(), &hash, records)
                 .map_err(|e| Error::Database(e.to_string()))?;
         } else {
             log::warn!("❗️ Block {:?} has no events.  This is unusual.", block);

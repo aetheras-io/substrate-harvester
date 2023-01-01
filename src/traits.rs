@@ -119,8 +119,12 @@ pub trait IndexStore<R, E> {
         records: Vec<(Phase, R, E)>,
     ) -> Result<(), Self::Error>;
 
-    fn process_finalized(&self, block: u32, records: Vec<(Phase, R, E)>)
-        -> Result<(), Self::Error>;
+    fn process_finalized(
+        &self,
+        block: u32,
+        block_hash: &[u8],
+        records: Vec<(Phase, R, E)>,
+    ) -> Result<(), Self::Error>;
 
     fn finalize(&self, block: u32) -> Result<(), Self::Error>;
 
